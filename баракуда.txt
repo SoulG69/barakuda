@@ -1,0 +1,152 @@
+using BarcodeStandard;
+using Microsoft.SqlServer.Server;
+using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using Image = System.Drawing.Image;
+using System.Drawing.Imaging;
+using Word = Microsoft.Office.Interop;
+using Microsoft.Office.Interop.Word;
+using BarcodeLib;
+using iTextSharp.text.pdf;
+using Aspose.BarCode.Generation;
+using Aspose.Pdf.Facades;
+
+namespace capcha_and_word_train
+{
+    /// <summary>
+    /// Логика взаимодействия для MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : System.Windows.Window
+    {
+        public MainWindow()
+        {
+            InitializeComponent();
+            GenerateCaptcha();
+        }
+
+        public String capcha = "";
+        public bool niceOrNotTry = false;
+
+        private void reloadImage_Click(object sender, RoutedEventArgs e)
+        {
+            GenerateCaptcha();
+        }
+
+        private void GenerateCaptcha()
+        {
+            Random random = new Random();
+            capcha = GenerateRandomString(6); // Генерируем случайную строку из 6 символов
+            captchaText.Content = capcha;
+        }
+
+        private string GenerateRandomString(int length)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            char[] randomChars = new char[length];
+            Random random = new Random();
+
+            for (int i = 0; i < length; i++)
+            {
+                randomChars[i] = chars[random.Next(chars.Length)];
+            }
+
+            return new string(randomChars);
+        }
+
+        public string wordCaptcha = string.Empty;
+
+        private void tryEnterCapcha_Click(object sender, RoutedEventArgs e)
+        {
+            if (tryCapcha.Text == capcha)
+            {
+                niceOrNotTry = true;
+                MessageBox.Show("You are awsome");
+                wordCaptcha = capcha;
+                capcha = string.Empty;
+            }
+            else
+            {
+                niceOrNotTry = false;
+                MessageBox.Show("You are not awsome");
+                wordCaptcha = capcha;
+                capcha = string.Empty;
+            }
+        }
+
+        private void takeWord_Click(object sender, RoutedEventArgs e)
+        {
+            string path = "C:\\My Projects and Homeworks\\capcha and word train\\capcha and word train\\word res\\takeCapcha.docx";
+            string savepath = "C:\\My Projects and Homeworks\\capcha and word train\\capcha and word train\\"+"takeCapchaNumberOne.docx";
+
+            Word.Word.Application word = new Word.Word.Application();
+            Word.Word.Document doc = new Word.Word.Document();
+
+            doc.Content.Text = $"\t\t\t\tКапча {wordCaptcha} введена {niceOrNotTry.ToString()}!";
+            doc.SaveAs2(savepath);
+            doc.Close();
+            word.Quit();
+
+            MessageBox.Show($"Отчет сохранен по пути: {savepath}");
+        }
+
+        private void loadImage_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog open = new OpenFileDialog();
+            if(open.ShowDialog() == true)
+            {
+                open.Filter = "Image files (*.JPG, *.PNG) | *.jpg, *.png";
+                string filename = open.FileName;
+                mamage.Source = new BitmapImage(new Uri(filename));
+            }
+        }
+
+        private void BarCodeEnter_Click(object sender, RoutedEventArgs e)
+        {
+            Random random = new Random();
+            // В этом примере кода показано, как добавить изображение штрих-кода в PDF-файл.
+            // Путь к каталогу документов.
+            string dataDir = @"C:\My Projects and Homeworks\capcha and word train\barcode"+$"{capcha.ToString()}"+".pdf";
+
+            // Создайте объект линейного штрих-кода, установите текст кода и тип символики для штрих-кода.
+            BarcodeGenerator generator = new BarcodeGenerator(EncodeTypes.Code39Standard, capcha);
+
+            // Создать поток памяти и сохранить изображение штрих-кода в поток памяти
+            Stream ms = new MemoryStream();
+            generator.Save(ms, BarCodeImageFormat.Bmp);
+
+            // Создайте документ PDF и добавьте страницу в документ
+            Aspose.Pdf.Document doc = new Aspose.Pdf.Document();
+            doc.Pages.Add();
+
+            // Открыть документ
+            PdfFileMend mender = new PdfFileMend();
+
+            // Привяжите PDF, чтобы добавить штрих-код
+            mender.BindPdf(doc);
+
+            // Добавить изображение штрих-кода в файл PDF
+            mender.AddImage(ms, 1, 100, 600, 200, 700);
+
+            // Сохранить изменения
+            mender.Save(dataDir);
+
+            // Закрыть объект PdfFileMend
+            mender.Close();
+        }
+    }
+}
